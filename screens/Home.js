@@ -1,4 +1,10 @@
-import React from "react";
+import React, {
+  createRef,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -22,26 +28,63 @@ import {
 import { connect } from "react-redux";
 import appTheme from "../constants/theme";
 
-const promoTabs = constants.promoTabs;
+const promoTabs = constants.promoTabs.map((promoTab) => ({
+  ...promoTab,
+  ref: createRef(),
+}));
 
-const TabIndicator = () => {
+const TabIndicator = ({ measureLayout, scrollX }) => {
+  const inputRange = promoTabs.map((_, i) => i * SIZES.width);
+
+  const TabIndicatorWidth = scrollX.interpolate({
+    inputRange,
+    outputRange: measureLayout.map((measure) => measure.width),
+  });
+
+  const translateX = scrollX.interpolate({
+    inputRange,
+    outputRange: measureLayout.map((measure) => measure.x),
+  });
+
   return (
-    <View
+    <Animated.View
       style={{
         position: "absolute",
         height: "100%",
-        width: 100,
+        width: TabIndicatorWidth,
         left: 0,
-        borderRadius: SIZES.radius * 5,
+        borderRadius: SIZES.radius,
         backgroundColor: COLORS.primary,
+        transform: [{ translateX }],
       }}
-    ></View>
+    />
   );
 };
 
-const Tabs = ({ appTheme }) => {
+const Tabs = ({ appTheme, scrollX, onPromoTabPress }) => {
+  const [measureLayout, setMeasureLayout] = useState([]);
+  const containerRef = useRef();
+  const tabPosition = Animated.divide(scrollX, SIZES.width);
+
+  useEffect(() => {
+    let ml = [];
+    promoTabs.forEach((promo) => {
+      promo.ref.current.measureLayout(
+        containerRef.current,
+        (x, y, width, height) => {
+          // console.log(x, y, width, height);
+          ml.push({ x, y, width, height });
+          if (ml.length === promoTabs.length) {
+            setMeasureLayout(ml);
+          }
+        }
+      );
+    });
+  }, [containerRef.current]);
+
   return (
     <View
+      ref={containerRef}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -52,16 +95,25 @@ const Tabs = ({ appTheme }) => {
       }}
     >
       {/* Tab Indicator */}
-      <TabIndicator />
+      {measureLayout.length > 0 && (
+        <TabIndicator measureLayout={measureLayout} scrollX={scrollX} />
+      )}
 
       {/* Tabs */}
       {promoTabs.map((item, index) => {
+        const textColor = tabPosition.interpolate({
+          inputRange: [index - 1, index, index + 1],
+          outputRange: [COLORS.lightGray2, COLORS.white, COLORS.lightGray2],
+          extrapolate: "clamp",
+        });
+
         return (
           <TouchableOpacity
             key={`promoTab-${index}`}
-            onPress={() => console.log(item)}
+            onPress={() => onPromoTabPress(index)}
           >
             <View
+              ref={item.ref}
               style={{
                 paddingHorizontal: 15,
                 alignItems: "center",
@@ -69,14 +121,14 @@ const Tabs = ({ appTheme }) => {
                 height: 40,
               }}
             >
-              <Text
+              <Animated.Text
                 style={{
-                  color: COLORS.white,
+                  color: textColor,
                   ...FONTS.h3,
                 }}
               >
                 {item.title}
-              </Text>
+              </Animated.Text>
             </View>
           </TouchableOpacity>
         );
@@ -86,7 +138,15 @@ const Tabs = ({ appTheme }) => {
 };
 
 const Home = ({ navigation, appTheme }) => {
-  const scrollX = React.useRef(new Animated.Value(0)).current;
+  const scrollX = useRef(new Animated.Value(0)).current;
+
+  const promoScrollViewRef = useRef();
+
+  const onPromoTabPress = useCallback((promptabIndex) => {
+    promoScrollViewRef?.current?.scrollToOffset({
+      offset: promptabIndex * SIZES.width,
+    });
+  });
 
   function renderAvailableRewards() {
     return (
@@ -196,10 +256,15 @@ const Home = ({ navigation, appTheme }) => {
         }}
       >
         {/* Header - Tabs */}
-        <Tabs appTheme={appTheme} />
+        <Tabs
+          appTheme={appTheme}
+          scrollX={scrollX}
+          onPromoTabPress={onPromoTabPress}
+        />
 
         {/* Details */}
         <Animated.FlatList
+          ref={promoScrollViewRef}
           data={dummyData.promos}
           horizontal
           pagingEnabled
