@@ -1,31 +1,32 @@
-import React from 'react';
+import React from "react";
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet
-} from 'react-native';
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+  FlatList,
+  Image,
+  TouchableWithoutFeedback,
+} from "react-native";
+import { dummyData, FONTS, COLORS, SIZES, icons } from "../constants";
+import { IconButton, TabButton } from "../components";
+import { connect } from "react-redux";
 
 const Order = ({ navigation }) => {
-    return (
-        <View style={styles.container}>
-            <Text>Order</Text>
+  return <View></View>;
+};
 
-            <TouchableOpacity
-                onPress={() => navigation.navigate("OrderDetail")}
-            >
-                <Text>Navigate to OrderDetail</Text>
-            </TouchableOpacity>
-        </View>
-    )
+// export default Order;
+
+function mapStateToProps(state) {
+  return {
+    appTheme: state.appTheme,
+    error: state.error,
+  };
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center'
-    }
-})
+function mapDispatchToProps(dispatch) {
+  return {};
+}
 
-export default Order;
+export default connect(mapStateToProps, mapDispatchToProps)(Order);
